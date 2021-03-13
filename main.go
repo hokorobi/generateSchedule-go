@@ -50,6 +50,7 @@ type MyMainWindow struct {
 	start          *walk.LineEdit
 	end            *walk.LineEdit
 	comboOuputType *walk.ComboBox
+	sheet          [][]string
 }
 
 func main() {
@@ -60,40 +61,59 @@ func main() {
 }
 
 func _main() error {
-	var f string
-	if len(os.Args) > 1 {
-		f = os.Args[1]
-	} else {
-		files, err := filepath.Glob("./*.xlsx")
-		if err != nil {
-			log.Fatal(err)
-			return err
-		}
-		f = files[0]
-	}
-	info, err := os.Stat(f)
-	if err != nil {
-		log.Printf("Not exists '%s'\n", f)
+	file := getExcelfile()
+	if file == "" {
 		return nil
 	}
-	if info.IsDir() {
-		return nil
-	}
+
 	// sheets := getSheets(f)
-	sheet := getSheet(f, "Sheet1")
+	sheet := getSheet(file, "Sheet1")
 	// printCols2(sheet)
 	// fmt.Println(getStartColumn())
 
 	MW := getMainWindow(sheet)
 	MW.Run()
 
-	fmt.Println(getPlainTasks(sheet, 2))
-	writeCsv(convertTask(getPlainTasks(sheet, 2)))
+	// fmt.Println(getPlainTasks(sheet, 2))
 	return nil
+}
+
+func (mw *MyMainWindow) writeCsv() {
+	i := mw.comboTarget.CurrentIndex()
+	if i == -1 {
+		walk.MsgBox(mw, "message", "担当者を選択してください", walk.MsgBoxOK|walk.MsgBoxIconError)
+		return
+	}
+	writeCsv(convertTask(getPlainTasks(mw.sheet, i)))
+}
+
+func getExcelfile() string {
+	var f string
+	if len(os.Args) > 1 {
+		f = os.Args[1]
+	} else {
+		files, err := filepath.Glob("./*.xlsx")
+		if err != nil {
+			log.Println(err)
+			return ""
+		}
+		f = files[0]
+	}
+	info, err := os.Stat(f)
+	if err != nil {
+		log.Printf("Not exists '%s'\n", f)
+		return ""
+	}
+	if info.IsDir() {
+		log.Printf("'%s' is a directory\n", f)
+		return ""
+	}
+	return f
 }
 
 func getMainWindow(sheet [][]string) MainWindow {
 	mw := &MyMainWindow{}
+	mw.sheet = sheet
 	now := time.Now()
 	textStart := now.Format("2006-01-02")
 	end := now.AddDate(1, 0, 0)
@@ -101,8 +121,8 @@ func getMainWindow(sheet [][]string) MainWindow {
 	MW := MainWindow{
 		AssignTo: &mw.MainWindow,
 		Title:    "generateSchedule",
-		MinSize:  Size{Width: 150, Height: 200},
-		Size:     Size{Width: 150, Height: 200},
+		MinSize:  Size{Width: 250, Height: 300},
+		Size:     Size{Width: 250, Height: 300},
 		Layout:   VBox{},
 		Children: []Widget{
 			HSplitter{
@@ -115,7 +135,7 @@ func getMainWindow(sheet [][]string) MainWindow {
 					},
 					ComboBox{
 						AssignTo: &mw.comboTarget,
-						Model:    getTargets(sheet),
+						Model:    getTargets(mw.sheet),
 					},
 				},
 			},
@@ -172,7 +192,8 @@ func getMainWindow(sheet [][]string) MainWindow {
 				},
 			},
 			PushButton{
-				Text: "Run",
+				Text:      "Run",
+				OnClicked: mw.writeCsv,
 			},
 		},
 	}
