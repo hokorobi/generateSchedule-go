@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
+	"golang.org/x/text/encoding/japanese"
+	"golang.org/x/text/transform"
 )
 
 var (
@@ -25,6 +27,14 @@ var (
 	iPeriod = 1
 	iTitle  = 2
 	iDetail = 3
+
+	iTaskStartDay  = 3
+	iTaskStartTime = 4
+	iTaskEndtDay   = 5
+	iTaskEndtTime  = 6
+	iTaskTitle     = 8
+	iTaskDetail    = 10
+
 	weekday = map[string]int{"日": 0, "月": 1, "火": 2, "水": 3, "木": 4, "金": 6, "土": 6}
 
 	start = time.Date(2021, 3, 13, 0, 0, 0, 0, time.Local)
@@ -111,7 +121,8 @@ func writeCsv(records [][]string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	w := csv.NewWriter(f)
+	w := csv.NewWriter(transform.NewWriter(f, japanese.ShiftJIS.NewEncoder()))
+	w.UseCRLF = true
 	w.WriteAll(records)
 	w.Flush()
 
@@ -133,13 +144,12 @@ func convertTask(ts [][]string) [][]string {
 		for _, pick := range picks {
 			for pick.Unix() <= end.Unix() {
 				task := make([]string, 20, 20)
-				task[3] = pick.Format("2006-01-02")
-				task[4] = "8:30"
-				task[5] = pick.Format("2006-01-02")
-				task[6] = "8:30"
-				task[8] = t[iTitle]
-				task[10] = t[iDetail]
-				task[19] = ""
+				task[iTaskStartDay] = pick.Format("2006-01-02")
+				task[iTaskStartTime] = "8:30"
+				task[iTaskEndtDay] = pick.Format("2006-01-02")
+				task[iTaskEndtTime] = "8:30"
+				task[iTaskTitle] = t[iTitle]
+				task[iTaskDetail] = t[iDetail]
 				tasks = append(tasks, task)
 				if cycle == "Y" {
 					pick = pick.AddDate(1, 0, 0)
