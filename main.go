@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"time"
@@ -59,7 +60,17 @@ func main() {
 }
 
 func _main() error {
-	f := os.Args[1]
+	var f string
+	if len(os.Args) > 1 {
+		f = os.Args[1]
+	} else {
+		files, err := filepath.Glob("./*.xlsx")
+		if err != nil {
+			log.Fatal(err)
+			return err
+		}
+		f = files[0]
+	}
 	info, err := os.Stat(f)
 	if err != nil {
 		log.Printf("Not exists '%s'\n", f)
