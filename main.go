@@ -19,16 +19,38 @@ func _main() error {
 	f := os.Args[1]
 	info, err := os.Stat(f)
 	if err != nil {
-		fmt.Printf("Not exists '%s'\n", f)
+		log.Printf("Not exists '%s'\n", f)
 		return nil
 	}
 	if info.IsDir() {
 		return nil
 	}
-	sheets := getSheets(f)
-	printCols(sheets)
+	// sheets := getSheets(f)
+	sheet := getSheet(f, "Sheet1")
+	printCols2(sheet)
 	// fmt.Println(getStartColumn())
+
+	targets := getTargets(sheet)
+	log.Println(targets)
 	return nil
+}
+
+func getTargets(s [][]string) []string {
+	rowTargets := 1
+	colStartTargets := 20
+	var targets []string
+	for i, cols := range s {
+		if i != rowTargets {
+			continue
+		}
+		for j, cell := range cols {
+			if j < colStartTargets {
+				continue
+			}
+			targets = append(targets, cell)
+		}
+	}
+	return targets
 }
 
 func getSheets(f string) map[string][][]string {
@@ -50,12 +72,26 @@ func getSheets(f string) map[string][][]string {
 	return sheets
 }
 
+func getSheet(f string, sheetName string) [][]string {
+	xls, err := excelize.OpenFile(f)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	return xls.GetRows(sheetName)
+}
+
 func printCols(sheets map[string][][]string) {
-	// O_WRONLY:書き込みモード開く, O_CREATE:無かったらファイルを作成
 	for _, rows := range sheets {
 		for _, cols := range rows {
 			fmt.Println(cols)
 		}
+	}
+}
+
+func printCols2(sheet [][]string) {
+	for _, cols := range sheet {
+		fmt.Println(cols)
 	}
 }
 
