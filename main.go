@@ -134,8 +134,9 @@ func getMainWindow(sheet [][]string) MainWindow {
 						},
 					},
 					ComboBox{
-						AssignTo: &mw.comboTarget,
-						Model:    getTargets(mw.sheet),
+						AssignTo:     &mw.comboTarget,
+						Model:        getTargets(mw.sheet),
+						CurrentIndex: 0,
 					},
 				},
 			},
@@ -186,8 +187,9 @@ func getMainWindow(sheet [][]string) MainWindow {
 						},
 					},
 					ComboBox{
-						AssignTo: &mw.comboOuputType,
-						Model:    []string{"スケジュール", "タスク"},
+						AssignTo:     &mw.comboOuputType,
+						Model:        []string{"スケジュール", "タスク"},
+						CurrentIndex: 1,
 					},
 				},
 			},
