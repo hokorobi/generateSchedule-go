@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
+	"github.com/lxn/walk"
+	. "github.com/lxn/walk/declarative"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/transform"
 )
@@ -41,6 +43,14 @@ var (
 	end   = time.Date(2022, 3, 13, 0, 0, 0, 0, time.Local)
 )
 
+type MyMainWindow struct {
+	*walk.MainWindow
+	comboTarget    *walk.ComboBox
+	start          *walk.LineEdit
+	end            *walk.LineEdit
+	comboOuputType *walk.ComboBox
+}
+
 func main() {
 	if err := _main(); err != nil {
 		fmt.Println(err)
@@ -63,12 +73,99 @@ func _main() error {
 	// printCols2(sheet)
 	// fmt.Println(getStartColumn())
 
-	targets := getTargets(sheet)
-	log.Println(targets)
+	MW := getMainWindow(sheet)
+	MW.Run()
 
 	fmt.Println(getPlainTasks(sheet, 2))
 	writeCsv(convertTask(getPlainTasks(sheet, 2)))
 	return nil
+}
+
+func getMainWindow(sheet [][]string) MainWindow {
+	mw := &MyMainWindow{}
+	now := time.Now()
+	textStart := now.Format("2006-01-02")
+	end := now.AddDate(1, 0, 0)
+	textEnd := end.Format("2006-01-02")
+	MW := MainWindow{
+		AssignTo: &mw.MainWindow,
+		Title:    "generateSchedule",
+		MinSize:  Size{Width: 150, Height: 200},
+		Size:     Size{Width: 150, Height: 200},
+		Layout:   VBox{},
+		Children: []Widget{
+			HSplitter{
+				Children: []Widget{
+					VSplitter{
+						Children: []Widget{
+							Label{Text: "担当者: "},
+							VSpacer{},
+						},
+					},
+					ComboBox{
+						AssignTo: &mw.comboTarget,
+						Model:    getTargets(sheet),
+					},
+				},
+			},
+			HSplitter{
+				Children: []Widget{
+					VSplitter{
+						Children: []Widget{
+							Label{Text: "開始日: "},
+							VSpacer{},
+						},
+					},
+					VSplitter{
+						Children: []Widget{
+							LineEdit{
+								AssignTo: &mw.start,
+								Text:     textStart,
+							},
+							VSpacer{},
+						},
+					},
+				},
+			},
+			HSplitter{
+				Children: []Widget{
+					VSplitter{
+						Children: []Widget{
+							Label{Text: "終了日: "},
+							VSpacer{},
+						},
+					},
+					VSplitter{
+						Children: []Widget{
+							LineEdit{
+								AssignTo: &mw.end,
+								Text:     textEnd,
+							},
+							VSpacer{},
+						},
+					},
+				},
+			},
+			HSplitter{
+				Children: []Widget{
+					VSplitter{
+						Children: []Widget{
+							Label{Text: "出力形式: "},
+							VSpacer{},
+						},
+					},
+					ComboBox{
+						AssignTo: &mw.comboOuputType,
+						Model:    []string{"スケジュール", "タスク"},
+					},
+				},
+			},
+			PushButton{
+				Text: "Run",
+			},
+		},
+	}
+	return MW
 }
 
 func getPicks(task []string) ([]time.Time, string) {
