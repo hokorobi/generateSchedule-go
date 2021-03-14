@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/csv"
-	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,14 +22,14 @@ const (
 	rowStaff     = 1
 	rowStartTask = 2
 
-	colCyclic     = 3
+	colCycle      = 3
 	colPeriod     = 4
 	colTitle      = 5
 	colDetail     = 6
 	colStartStaff = 20
 
 	// Excel から取得したタスクのインデックス
-	iCyclic = 0
+	iCycle  = 0
 	iPeriod = 1
 	iTitle  = 2
 	iDetail = 3
@@ -56,8 +56,8 @@ const (
 var (
 	weekday = map[string]int{"日": 0, "月": 1, "火": 2, "水": 3, "木": 4, "金": 5, "土": 6}
 
-	startDate time.Time
-	endDate   time.Time
+	startDay time.Time
+	endDay   time.Time
 
 	filename  string
 	sheetname string
@@ -126,6 +126,7 @@ func main() {
 		return
 	}
 
+	// TODO: ログファイル出力
 	MW := getMainWindow(sheet)
 	MW.Run()
 }
@@ -142,14 +143,14 @@ func (mw *MyMainWindow) writeCsv() {
 		return
 	}
 	var err error
-	startDate, err = time.Parse("2006-01-02", mw.start.Text())
+	startDay, err = time.Parse("2006-01-02", mw.start.Text())
 	if err != nil {
-		fmt.Println(err)
+		logg(err)
 		return
 	}
-	endDate, err = time.Parse("2006-01-02", mw.end.Text())
+	endDay, err = time.Parse("2006-01-02", mw.end.Text())
 	if err != nil {
-		fmt.Println(err)
+		logg(err)
 		return
 	}
 
@@ -165,27 +166,27 @@ func convertOutlookFormat(tasks [][]string, formatType int) [][]string {
 }
 
 func getExcelfile() string {
-	var f string
+	var filename string
 	if len(os.Args) > 1 {
-		f = os.Args[1]
+		filename = os.Args[1]
 	} else {
 		files, err := filepath.Glob("./*.xlsx")
 		if err != nil {
-			log.Println(err)
+			logg(err)
 			return ""
 		}
-		f = files[0]
+		filename = files[0]
 	}
-	info, err := os.Stat(f)
+	info, err := os.Stat(filename)
 	if err != nil {
-		log.Printf("Not exists '%s'\n", f)
+		logg("Not exists:" + filename)
 		return ""
 	}
 	if info.IsDir() {
-		log.Printf("'%s' is a directory\n", f)
+		logg(filename + " is a directory.")
 		return ""
 	}
-	return f
+	return filename
 }
 
 func getMainWindow(sheet [][]string) MainWindow {
@@ -247,40 +248,40 @@ func getMainWindow(sheet [][]string) MainWindow {
 func getPicks(task []string) ([]time.Time, string) {
 	var picks []time.Time
 	var cycle string
-	if task[iCyclic] == "年" {
+	if task[iCycle] == "年" {
 		r := regexp.MustCompile(`\d+`)
 		result := r.FindAllStringSubmatch(task[iPeriod], -1)
 		for _, period := range result {
 			month, err := strconv.Atoi(period[0])
 			if err != nil {
-				log.Println(err)
+				logg(err)
 			}
-			picks = append(picks, time.Date(startDate.Year(), time.Month(month), 1, 0, 0, 0, 0, time.Local))
+			picks = append(picks, time.Date(startDay.Year(), time.Month(month), 1, 0, 0, 0, 0, time.Local))
 		}
 		cycle = "Y"
-	} else if task[iCyclic] == "月" {
+	} else if task[iCycle] == "月" {
 		r := regexp.MustCompile(`\d+`)
 		result := r.FindAllStringSubmatch(task[iPeriod], -1)
 		for _, period := range result {
 			day, err := strconv.Atoi(period[0])
 			if err != nil {
-				log.Println(err)
+				logg(err)
 			}
-			picks = append(picks, time.Date(startDate.Year(), startDate.Month(), day, 0, 0, 0, 0, time.Local))
+			picks = append(picks, time.Date(startDay.Year(), startDay.Month(), day, 0, 0, 0, 0, time.Local))
 		}
 		cycle = "M"
-	} else if task[iCyclic] == "週" {
+	} else if task[iCycle] == "週" {
 		var diff int
 		r := regexp.MustCompile(`[月火水木金土日]`)
 		result := r.FindAllStringSubmatch(task[iPeriod], -1)
 		for _, period := range result {
 			current_weekday := weekday[period[0]]
-			if int(startDate.Weekday()) <= current_weekday {
-				diff = current_weekday - int(startDate.Weekday())
+			if int(startDay.Weekday()) <= current_weekday {
+				diff = current_weekday - int(startDay.Weekday())
 			} else {
-				diff = current_weekday - int(startDate.Weekday()) + 7
+				diff = current_weekday - int(startDay.Weekday()) + 7
 			}
-			picks = append(picks, startDate.AddDate(0, 0, diff))
+			picks = append(picks, startDay.AddDate(0, 0, diff))
 		}
 		cycle = "W"
 	} else {
@@ -314,7 +315,7 @@ func convertSchedule(tasks [][]string) [][]string {
 			continue
 		}
 		for _, pick := range picks {
-			for pick.Unix() <= endDate.Unix() {
+			for pick.Unix() <= endDay.Unix() {
 				list := make([]string, 20, 20)
 				list[iScheduleStartDay] = pick.Format("2006-01-02")
 				list[iScheduleStartTime] = "8:30"
@@ -340,7 +341,7 @@ func convertTask(tasks [][]string) [][]string {
 			continue
 		}
 		for _, pick := range picks {
-			for pick.Unix() <= endDate.Unix() {
+			for pick.Unix() <= endDay.Unix() {
 				list := make([]string, 22, 22)
 				list[iTaskTitle] = task[iTitle]
 				list[iTaskStartDay] = pick.Format("2006-01-02")
@@ -379,7 +380,7 @@ func getPlainTasks(s [][]string, indexStaff int) [][]string {
 		if cells[colStaff] != "〇" {
 			continue
 		}
-		task = []string{cells[colCyclic], cells[colPeriod], cells[colTitle], cells[colDetail]}
+		task = []string{cells[colCycle], cells[colPeriod], cells[colTitle], cells[colDetail]}
 		tasks = append(tasks, task)
 	}
 	return tasks
@@ -405,7 +406,7 @@ func getStaves(s [][]string) []string {
 func getSheetName(filename string) string {
 	f, err := excelize.OpenFile(filename)
 	if err != nil {
-		log.Println(err)
+		logg(err)
 		return ""
 	}
 	return f.GetSheetMap()[1]
@@ -414,36 +415,46 @@ func getSheetName(filename string) string {
 func getSheet() [][]string {
 	filename = getExcelfile()
 	if filename == "" {
-		log.Println("Excel ファイルは見つかりませんでした。")
+		logg("Excel ファイルは見つかりませんでした。")
 		return nil
 	}
 
 	sheetname = getSheetName(filename)
 	if sheetname == "" {
-		log.Printf("%s からシート名が取得できませんでした。", filename)
+		logg(filename + " からシート名が取得できませんでした。")
 		return nil
 	}
 
 	f, err := excelize.OpenFile(filename)
 	if err != nil {
-		log.Println(err)
+		logg(err)
 		return nil
 	}
 	return f.GetRows(sheetname)
 }
 
-func printCols(sheets map[string][][]string) {
-	for _, rows := range sheets {
-		for _, cols := range rows {
-			fmt.Println(cols)
-		}
-	}
+// https://qiita.com/KemoKemo/items/d135ddc93e6f87008521#comment-7d090bd8afe54df429b9
+func getFileNameWithoutExt(path string) string {
+	return filepath.Base(path[:len(path)-len(filepath.Ext(path))])
 }
-
-func printCols2(sheet [][]string) {
-	for _, cols := range sheet {
-		fmt.Println(cols)
+func getFilename(ext string) string {
+	exec, _ := os.Executable()
+	return filepath.Join(filepath.Dir(exec), getFileNameWithoutExt(exec)+ext)
+}
+func logg(m interface{}) {
+	f, err := os.OpenFile(getFilename(".log"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Println("Cannot open log file: " + err.Error())
 	}
+	defer f.Close()
+
+	log.SetOutput(io.MultiWriter(f, os.Stderr))
+	log.SetFlags(log.Ldate | log.Ltime)
+	log.Println(m)
+}
+func logf(m interface{}) {
+	logg(m)
+	os.Exit(1)
 }
 
 // vim: ff=unix
