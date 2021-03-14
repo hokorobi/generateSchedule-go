@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	// Excel シートの行、列
 	rowStaff     = 1
 	rowStartTask = 2
 
@@ -27,16 +28,19 @@ const (
 	colDetail     = 6
 	colStartStaff = 20
 
+	// Excel から取得したタスクのインデックス
 	iCyclic = 0
 	iPeriod = 1
 	iTitle  = 2
 	iDetail = 3
 
+	// Outlook タスクの CSV インデックス
 	iTaskTitle    = 0
 	iTaskStartDay = 1
 	iTaskEndtDay  = 2
 	iTaskDetail   = 12
 
+	// Outlook スケジュールの CSV インデックス
 	iScheduleStartDay  = 3
 	iScheduleStartTime = 4
 	iScheduleEndtDay   = 5
@@ -44,15 +48,16 @@ const (
 	iScheduleTitle     = 8
 	iScheduleDetail    = 10
 
+	// ウィンドウで選択する出力形式のインデックス
 	formatSchedule = 0
 	formatTask     = 1
 )
 
 var (
-	weekday = map[string]int{"日": 0, "月": 1, "火": 2, "水": 3, "木": 4, "金": 6, "土": 6}
+	weekday = map[string]int{"日": 0, "月": 1, "火": 2, "水": 3, "木": 4, "金": 5, "土": 6}
 
-	start = time.Date(2021, 3, 13, 0, 0, 0, 0, time.Local)
-	end   = time.Date(2022, 3, 13, 0, 0, 0, 0, time.Local)
+	startDate time.Time
+	endDate   time.Time
 
 	filename  string
 	sheetname string
@@ -136,7 +141,18 @@ func (mw *MyMainWindow) writeCsv() {
 		walk.MsgBox(mw, "message", "出力形式を選択してください", walk.MsgBoxOK|walk.MsgBoxIconError)
 		return
 	}
-	// TODO: 開始日、終了日を取得
+	var err error
+	startDate, err = time.Parse("2006-01-02", mw.start.Text())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	endDate, err = time.Parse("2006-01-02", mw.end.Text())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	writeCsv(convertOutlookFormat(getPlainTasks(mw.sheet, staff), formatType))
 }
 
@@ -239,7 +255,7 @@ func getPicks(task []string) ([]time.Time, string) {
 			if err != nil {
 				log.Println(err)
 			}
-			picks = append(picks, time.Date(start.Year(), time.Month(month), 1, 0, 0, 0, 0, time.Local))
+			picks = append(picks, time.Date(startDate.Year(), time.Month(month), 1, 0, 0, 0, 0, time.Local))
 		}
 		cycle = "Y"
 	} else if task[iCyclic] == "月" {
@@ -250,7 +266,7 @@ func getPicks(task []string) ([]time.Time, string) {
 			if err != nil {
 				log.Println(err)
 			}
-			picks = append(picks, time.Date(start.Year(), start.Month(), day, 0, 0, 0, 0, time.Local))
+			picks = append(picks, time.Date(startDate.Year(), startDate.Month(), day, 0, 0, 0, 0, time.Local))
 		}
 		cycle = "M"
 	} else if task[iCyclic] == "週" {
@@ -259,12 +275,12 @@ func getPicks(task []string) ([]time.Time, string) {
 		result := r.FindAllStringSubmatch(task[iPeriod], -1)
 		for _, period := range result {
 			current_weekday := weekday[period[0]]
-			if int(start.Weekday()) <= current_weekday {
-				diff = current_weekday - int(start.Weekday())
+			if int(startDate.Weekday()) <= current_weekday {
+				diff = current_weekday - int(startDate.Weekday())
 			} else {
-				diff = current_weekday - int(start.Weekday()) + 7
+				diff = current_weekday - int(startDate.Weekday()) + 7
 			}
-			picks = append(picks, start.AddDate(0, 0, diff))
+			picks = append(picks, startDate.AddDate(0, 0, diff))
 		}
 		cycle = "W"
 	} else {
@@ -298,7 +314,7 @@ func convertSchedule(tasks [][]string) [][]string {
 			continue
 		}
 		for _, pick := range picks {
-			for pick.Unix() <= end.Unix() {
+			for pick.Unix() <= endDate.Unix() {
 				list := make([]string, 20, 20)
 				list[iScheduleStartDay] = pick.Format("2006-01-02")
 				list[iScheduleStartTime] = "8:30"
@@ -324,7 +340,7 @@ func convertTask(tasks [][]string) [][]string {
 			continue
 		}
 		for _, pick := range picks {
-			for pick.Unix() <= end.Unix() {
+			for pick.Unix() <= endDate.Unix() {
 				list := make([]string, 22, 22)
 				list[iTaskTitle] = task[iTitle]
 				list[iTaskStartDay] = pick.Format("2006-01-02")
@@ -349,6 +365,7 @@ func getNextPick(pick time.Time, cycle string) time.Time {
 	}
 	return pick
 }
+
 func getPlainTasks(s [][]string, indexStaff int) [][]string {
 	var tasks [][]string
 	var task []string
