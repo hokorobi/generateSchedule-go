@@ -136,6 +136,7 @@ func (mw *MyMainWindow) writeCsv() {
 		walk.MsgBox(mw, "message", "出力形式を選択してください", walk.MsgBoxOK|walk.MsgBoxIconError)
 		return
 	}
+	// TODO: 開始日、終了日を取得
 	writeCsv(convertOutlookFormat(getPlainTasks(mw.sheet, staff), formatType))
 }
 
