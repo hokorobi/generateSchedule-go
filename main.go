@@ -17,15 +17,15 @@ import (
 	"golang.org/x/text/transform"
 )
 
-var (
-	rowTargets   = 1
+const (
+	rowStaff     = 1
 	rowStartTask = 2
 
-	colCyclic       = 3
-	colPeriod       = 4
-	colTitle        = 5
-	colDetail       = 6
-	colStartTargets = 20
+	colCyclic     = 3
+	colPeriod     = 4
+	colTitle      = 5
+	colDetail     = 6
+	colStartStaff = 20
 
 	iCyclic = 0
 	iPeriod = 1
@@ -44,6 +44,11 @@ var (
 	iScheduleTitle     = 8
 	iScheduleDetail    = 10
 
+	formatSchedule = 0
+	formatTask     = 1
+)
+
+var (
 	weekday = map[string]int{"日": 0, "月": 1, "火": 2, "水": 3, "木": 4, "金": 6, "土": 6}
 
 	start = time.Date(2021, 3, 13, 0, 0, 0, 0, time.Local)
@@ -103,7 +108,7 @@ var (
 
 type MyMainWindow struct {
 	*walk.MainWindow
-	comboTarget    *walk.ComboBox
+	comboStaff     *walk.ComboBox
 	start          *walk.LineEdit
 	end            *walk.LineEdit
 	comboOuputType *walk.ComboBox
@@ -121,12 +126,25 @@ func main() {
 }
 
 func (mw *MyMainWindow) writeCsv() {
-	i := mw.comboTarget.CurrentIndex()
-	if i == -1 {
+	staff := mw.comboStaff.CurrentIndex()
+	if staff == -1 {
 		walk.MsgBox(mw, "message", "担当者を選択してください", walk.MsgBoxOK|walk.MsgBoxIconError)
 		return
 	}
-	writeCsv(convertSchedule(getPlainTasks(mw.sheet, i)))
+	formatType := mw.comboOuputType.CurrentIndex()
+	if formatType == -1 {
+		walk.MsgBox(mw, "message", "出力形式を選択してください", walk.MsgBoxOK|walk.MsgBoxIconError)
+		return
+	}
+	writeCsv(convertOutlookFormat(getPlainTasks(mw.sheet, staff), formatType))
+}
+
+func convertOutlookFormat(tasks [][]string, formatType int) [][]string {
+	if formatType == formatSchedule {
+		return convertSchedule(tasks)
+	} else {
+		return convertTask(tasks)
+	}
 }
 
 func getExcelfile() string {
@@ -172,8 +190,8 @@ func getMainWindow(sheet [][]string) MainWindow {
 				Children: []Widget{
 					Label{Text: "担当者: "},
 					ComboBox{
-						AssignTo:     &mw.comboTarget,
-						Model:        getTargets(mw.sheet),
+						AssignTo:     &mw.comboStaff,
+						Model:        getStaves(mw.sheet),
 						CurrentIndex: 0,
 					},
 					Label{Text: "開始日: "},
@@ -190,11 +208,11 @@ func getMainWindow(sheet [][]string) MainWindow {
 					ComboBox{
 						AssignTo:     &mw.comboOuputType,
 						Model:        []string{"スケジュール", "タスク"},
-						CurrentIndex: 1,
+						CurrentIndex: 0,
 					},
 					PushButton{
 						ColumnSpan: 2,
-						Text:       "Run",
+						Text:       "出力",
 						OnClicked:  mw.writeCsv,
 					},
 					Label{Text: "ファイル名: "},
@@ -330,17 +348,17 @@ func getNextPick(pick time.Time, cycle string) time.Time {
 	}
 	return pick
 }
-func getPlainTasks(s [][]string, indexTarget int) [][]string {
+func getPlainTasks(s [][]string, indexStaff int) [][]string {
 	var tasks [][]string
 	var task []string
-	colTarget := colStartTargets + indexTarget
+	colStaff := colStartStaff + indexStaff
 
 	for i, cells := range s {
 		if i < rowStartTask {
 			continue
 		}
-		// fmt.Println(cols[colTarget])
-		if cells[colTarget] != "〇" {
+		// fmt.Println(cols[colStaff])
+		if cells[colStaff] != "〇" {
 			continue
 		}
 		task = []string{cells[colCyclic], cells[colPeriod], cells[colTitle], cells[colDetail]}
@@ -350,20 +368,20 @@ func getPlainTasks(s [][]string, indexTarget int) [][]string {
 }
 
 // 担当者の配列を取得
-func getTargets(s [][]string) []string {
-	var targets []string
+func getStaves(s [][]string) []string {
+	var staves []string
 	for i, cols := range s {
-		if i != rowTargets {
+		if i != rowStaff {
 			continue
 		}
 		for j, cell := range cols {
-			if j < colStartTargets {
+			if j < colStartStaff {
 				continue
 			}
-			targets = append(targets, cell)
+			staves = append(staves, cell)
 		}
 	}
-	return targets
+	return staves
 }
 
 func getSheetName(filename string) string {
