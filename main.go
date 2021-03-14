@@ -57,34 +57,13 @@ type MyMainWindow struct {
 }
 
 func main() {
-	if err := _main(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	sheet := getSheet()
+	if sheet == nil {
+		return
 	}
-}
-
-func _main() error {
-	filename = getExcelfile()
-	if filename == "" {
-		log.Println("Excel ファイルは見つかりませんでした。")
-		return nil
-	}
-
-	sheetname = getSheetName(filename)
-	if sheetname == "" {
-		log.Printf("%s からシート名が取得できませんでした。", filename)
-		return nil
-	}
-
-	sheet := getSheet(filename, sheetname)
-	// printCols2(sheet)
-	// fmt.Println(getStartColumn())
 
 	MW := getMainWindow(sheet)
 	MW.Run()
-
-	// fmt.Println(getPlainTasks(sheet, 2))
-	return nil
 }
 
 func (mw *MyMainWindow) writeCsv() {
@@ -316,13 +295,25 @@ func getSheetName(filename string) string {
 	return f.GetSheetMap()[1]
 }
 
-func getSheet(f string, sheetName string) [][]string {
-	xls, err := excelize.OpenFile(f)
+func getSheet() [][]string {
+	filename = getExcelfile()
+	if filename == "" {
+		log.Println("Excel ファイルは見つかりませんでした。")
+		return nil
+	}
+
+	sheetname = getSheetName(filename)
+	if sheetname == "" {
+		log.Printf("%s からシート名が取得できませんでした。", filename)
+		return nil
+	}
+
+	f, err := excelize.OpenFile(filename)
 	if err != nil {
 		log.Println(err)
 		return nil
 	}
-	return xls.GetRows(sheetName)
+	return f.GetRows(sheetname)
 }
 
 func printCols(sheets map[string][][]string) {
