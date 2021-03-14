@@ -18,25 +18,31 @@ import (
 )
 
 var (
-	rowTargets      = 1
-	rowStartTask    = 2
-	colStartTargets = 20
+	rowTargets   = 1
+	rowStartTask = 2
+
 	colCyclic       = 3
 	colPeriod       = 4
 	colTitle        = 5
 	colDetail       = 6
+	colStartTargets = 20
 
 	iCyclic = 0
 	iPeriod = 1
 	iTitle  = 2
 	iDetail = 3
 
-	iTaskStartDay  = 3
-	iTaskStartTime = 4
-	iTaskEndtDay   = 5
-	iTaskEndtTime  = 6
-	iTaskTitle     = 8
-	iTaskDetail    = 10
+	iTaskTitle    = 0
+	iTaskStartDay = 1
+	iTaskEndtDay  = 2
+	iTaskDetail   = 12
+
+	iScheduleStartDay  = 3
+	iScheduleStartTime = 4
+	iScheduleEndtDay   = 5
+	iScheduleEndtTime  = 6
+	iScheduleTitle     = 8
+	iScheduleDetail    = 10
 
 	weekday = map[string]int{"日": 0, "月": 1, "火": 2, "水": 3, "木": 4, "金": 6, "土": 6}
 
@@ -45,6 +51,54 @@ var (
 
 	filename  string
 	sheetname string
+
+	scheduleHeader = []string{
+		"ユーザー/グループシステムID",
+		"氏名/グループ名",
+		"ＩＤ（システムＩＤ：自動発番）",
+		"開始日",
+		"開始時刻",
+		"終了日",
+		"終了時刻",
+		"予定",
+		"件名",
+		"場所",
+		"内容",
+		"プライベート",
+		"外出区分",
+		"重要度",
+		"予約種別",
+		"帯状",
+		"フラグ",
+		"アイコン番号",
+		"承認依頼",
+		"確認通知メール",
+	}
+
+	taskHeader = []string{
+		"件名",
+		"開始日",
+		"期限",
+		"アラーム オン/オフ",
+		"アラーム日付",
+		"アラーム時刻",
+		"完了日",
+		"達成率",
+		"予測時間",
+		"実働時間",
+		"Schedule+ の優先度",
+		"プライベート",
+		"メモ",
+		"会社名",
+		"経費情報",
+		"支払い条件",
+		"状況",
+		"秘密度",
+		"分類",
+		"役割",
+		"優先度",
+		"連絡先",
+	}
 )
 
 type MyMainWindow struct {
@@ -72,7 +126,7 @@ func (mw *MyMainWindow) writeCsv() {
 		walk.MsgBox(mw, "message", "担当者を選択してください", walk.MsgBoxOK|walk.MsgBoxIconError)
 		return
 	}
-	writeCsv(convertTask(getPlainTasks(mw.sheet, i)))
+	writeCsv(convertSchedule(getPlainTasks(mw.sheet, i)))
 }
 
 func getExcelfile() string {
@@ -215,41 +269,67 @@ func writeCsv(records [][]string) {
 	}
 }
 
-func convertTask(ts [][]string) [][]string {
-	var tasks [][]string
-	var header = []string{"ユーザー/グループシステムID", "氏名/グループ名", "ＩＤ（システムＩＤ：自動発番）", "開始日", "開始時刻", "終了日", "終了時刻", "予定", "件名", "場所", "内容", "プライベート", "外出区分", "重要度", "予約種別", "帯状", "フラグ", "アイコン番号", "承認依頼", "確認通知メール"}
-	tasks = append(tasks, header)
+func convertSchedule(tasks [][]string) [][]string {
+	var lists [][]string
+	lists = append(lists, scheduleHeader)
 
-	for _, t := range ts {
-		picks, cycle := getPicks(t)
+	for _, task := range tasks {
+		picks, cycle := getPicks(task)
 		if cycle == "" {
 			continue
 		}
 		for _, pick := range picks {
 			for pick.Unix() <= end.Unix() {
-				task := make([]string, 20, 20)
-				task[iTaskStartDay] = pick.Format("2006-01-02")
-				task[iTaskStartTime] = "8:30"
-				task[iTaskEndtDay] = pick.Format("2006-01-02")
-				task[iTaskEndtTime] = "8:30"
-				task[iTaskTitle] = t[iTitle]
-				task[iTaskDetail] = t[iDetail]
-				tasks = append(tasks, task)
-				if cycle == "Y" {
-					pick = pick.AddDate(1, 0, 0)
-				} else if cycle == "M" {
-					pick = pick.AddDate(0, 1, 0)
-				} else {
-					// cycle == "W"
-					pick = pick.AddDate(0, 0, 7)
-				}
+				list := make([]string, 20, 20)
+				list[iScheduleStartDay] = pick.Format("2006-01-02")
+				list[iScheduleStartTime] = "8:30"
+				list[iScheduleEndtDay] = pick.Format("2006-01-02")
+				list[iScheduleEndtTime] = "8:30"
+				list[iScheduleTitle] = task[iTitle]
+				list[iScheduleDetail] = task[iDetail]
+				lists = append(lists, list)
+				pick = getNextPick(pick, cycle)
 			}
 		}
-
 	}
-	return tasks
+	return lists
 }
 
+func convertTask(tasks [][]string) [][]string {
+	var lists [][]string
+	lists = append(lists, taskHeader)
+
+	for _, task := range tasks {
+		picks, cycle := getPicks(task)
+		if cycle == "" {
+			continue
+		}
+		for _, pick := range picks {
+			for pick.Unix() <= end.Unix() {
+				list := make([]string, 22, 22)
+				list[iTaskTitle] = task[iTitle]
+				list[iTaskStartDay] = pick.Format("2006-01-02")
+				list[iTaskEndtDay] = pick.Format("2006-01-02")
+				list[iTaskDetail] = task[iDetail]
+				lists = append(lists, list)
+				pick = getNextPick(pick, cycle)
+			}
+		}
+	}
+	return lists
+}
+
+func getNextPick(pick time.Time, cycle string) time.Time {
+	if cycle == "Y" {
+		pick = pick.AddDate(1, 0, 0)
+	} else if cycle == "M" {
+		pick = pick.AddDate(0, 1, 0)
+	} else {
+		// cycle == "W"
+		pick = pick.AddDate(0, 0, 7)
+	}
+	return pick
+}
 func getPlainTasks(s [][]string, indexTarget int) [][]string {
 	var tasks [][]string
 	var task []string
