@@ -42,6 +42,9 @@ var (
 
 	start = time.Date(2021, 3, 13, 0, 0, 0, 0, time.Local)
 	end   = time.Date(2022, 3, 13, 0, 0, 0, 0, time.Local)
+
+	filename  string
+	sheetname string
 )
 
 type MyMainWindow struct {
@@ -61,13 +64,14 @@ func main() {
 }
 
 func _main() error {
-	file := getExcelfile()
-	if file == "" {
+	filename = getExcelfile()
+	if filename == "" {
 		return nil
 	}
 
 	// sheets := getSheets(f)
-	sheet := getSheet(file, "Sheet1")
+	sheetname = "Sheet1"
+	sheet := getSheet(filename, sheetname)
 	// printCols2(sheet)
 	// fmt.Println(getStartColumn())
 
@@ -121,11 +125,12 @@ func getMainWindow(sheet [][]string) MainWindow {
 	MW := MainWindow{
 		AssignTo: &mw.MainWindow,
 		Title:    "generateSchedule",
-		MinSize:  Size{Width: 250, Height: 300},
-		Size:     Size{Width: 250, Height: 300},
+		MinSize:  Size{Width: 250, Height: 260},
+		Size:     Size{Width: 250, Height: 260},
 		Layout:   VBox{},
 		Children: []Widget{
-			HSplitter{
+			Composite{
+				Layout: Grid{Columns: 2},
 				Children: []Widget{
 					Label{Text: "担当者: "},
 					ComboBox{
@@ -133,41 +138,34 @@ func getMainWindow(sheet [][]string) MainWindow {
 						Model:        getTargets(mw.sheet),
 						CurrentIndex: 0,
 					},
-				},
-			},
-			HSplitter{
-				Children: []Widget{
 					Label{Text: "開始日: "},
 					LineEdit{
 						AssignTo: &mw.start,
 						Text:     textStart,
 					},
-				},
-			},
-			HSplitter{
-				Children: []Widget{
 					Label{Text: "終了日: "},
 					LineEdit{
 						AssignTo: &mw.end,
 						Text:     textEnd,
 					},
-				},
-			},
-			HSplitter{
-				Children: []Widget{
 					Label{Text: "出力形式: "},
 					ComboBox{
 						AssignTo:     &mw.comboOuputType,
 						Model:        []string{"スケジュール", "タスク"},
 						CurrentIndex: 1,
 					},
+					PushButton{
+						ColumnSpan: 2,
+						Text:       "Run",
+						OnClicked:  mw.writeCsv,
+					},
+					Label{Text: "ファイル名: "},
+					Label{Text: filename},
+					Label{Text: "シート名: "},
+					Label{Text: sheetname},
+					VSpacer{},
 				},
 			},
-			PushButton{
-				Text:      "Run",
-				OnClicked: mw.writeCsv,
-			},
-			VSpacer{},
 		},
 	}
 	return MW
