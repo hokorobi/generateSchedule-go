@@ -155,6 +155,7 @@ func (mw *MyMainWindow) writeCsv() {
 	}
 
 	writeCsv(convertOutlookFormat(getPlainTasks(mw.sheet, staff), formatType))
+	walk.MsgBox(mw, "message", "出力完了", walk.MsgBoxOK|walk.MsgBoxIconInformation)
 }
 
 func convertOutlookFormat(tasks [][]string, formatType int) [][]string {
@@ -293,15 +294,18 @@ func getPicks(task []string) ([]time.Time, string) {
 func writeCsv(records [][]string) {
 	f, err := os.Create("import.csv")
 	if err != nil {
-		log.Fatal(err)
+		logg(err)
+		return
 	}
+	defer f.Close()
+
 	w := csv.NewWriter(transform.NewWriter(f, japanese.ShiftJIS.NewEncoder()))
 	w.UseCRLF = true
 	w.WriteAll(records)
 	w.Flush()
 
 	if err := w.Error(); err != nil {
-		log.Fatal(err)
+		logg(err)
 	}
 }
 
