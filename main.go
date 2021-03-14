@@ -171,7 +171,7 @@ func getExcelfile() string {
 	if len(os.Args) > 1 {
 		filename = os.Args[1]
 	} else {
-		files, err := filepath.Glob("./*.xlsx")
+		files, err := filepath.Glob("./*.xlsm")
 		if err != nil {
 			logg(err)
 			return ""
