@@ -127,12 +127,7 @@ func getMainWindow(sheet [][]string) MainWindow {
 		Children: []Widget{
 			HSplitter{
 				Children: []Widget{
-					VSplitter{
-						Children: []Widget{
-							Label{Text: "担当者: "},
-							VSpacer{},
-						},
-					},
+					Label{Text: "担当者: "},
 					ComboBox{
 						AssignTo:     &mw.comboTarget,
 						Model:        getTargets(mw.sheet),
@@ -142,50 +137,25 @@ func getMainWindow(sheet [][]string) MainWindow {
 			},
 			HSplitter{
 				Children: []Widget{
-					VSplitter{
-						Children: []Widget{
-							Label{Text: "開始日: "},
-							VSpacer{},
-						},
-					},
-					VSplitter{
-						Children: []Widget{
-							LineEdit{
-								AssignTo: &mw.start,
-								Text:     textStart,
-							},
-							VSpacer{},
-						},
+					Label{Text: "開始日: "},
+					LineEdit{
+						AssignTo: &mw.start,
+						Text:     textStart,
 					},
 				},
 			},
 			HSplitter{
 				Children: []Widget{
-					VSplitter{
-						Children: []Widget{
-							Label{Text: "終了日: "},
-							VSpacer{},
-						},
-					},
-					VSplitter{
-						Children: []Widget{
-							LineEdit{
-								AssignTo: &mw.end,
-								Text:     textEnd,
-							},
-							VSpacer{},
-						},
+					Label{Text: "終了日: "},
+					LineEdit{
+						AssignTo: &mw.end,
+						Text:     textEnd,
 					},
 				},
 			},
 			HSplitter{
 				Children: []Widget{
-					VSplitter{
-						Children: []Widget{
-							Label{Text: "出力形式: "},
-							VSpacer{},
-						},
-					},
+					Label{Text: "出力形式: "},
 					ComboBox{
 						AssignTo:     &mw.comboOuputType,
 						Model:        []string{"スケジュール", "タスク"},
@@ -197,6 +167,7 @@ func getMainWindow(sheet [][]string) MainWindow {
 				Text:      "Run",
 				OnClicked: mw.writeCsv,
 			},
+			VSpacer{},
 		},
 	}
 	return MW
