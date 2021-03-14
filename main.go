@@ -66,11 +66,16 @@ func main() {
 func _main() error {
 	filename = getExcelfile()
 	if filename == "" {
+		log.Println("Excel ファイルは見つかりませんでした。")
 		return nil
 	}
 
-	// sheets := getSheets(f)
-	sheetname = "Sheet1"
+	sheetname = getSheetName(filename)
+	if sheetname == "" {
+		log.Printf("%s からシート名が取得できませんでした。", filename)
+		return nil
+	}
+
 	sheet := getSheet(filename, sheetname)
 	// printCols2(sheet)
 	// fmt.Println(getStartColumn())
@@ -302,23 +307,13 @@ func getTargets(s [][]string) []string {
 	return targets
 }
 
-func getSheets(f string) map[string][][]string {
-	sheets := map[string][][]string{}
-	xls, err := excelize.OpenFile(f)
+func getSheetName(filename string) string {
+	f, err := excelize.OpenFile(filename)
 	if err != nil {
 		log.Println(err)
-		return sheets
+		return ""
 	}
-	for _, sheetName := range xls.GetSheetMap() {
-		rows := xls.GetRows(sheetName)
-		_, ok := sheets[sheetName]
-		if ok {
-			sheets[sheetName] = append(sheets[sheetName], rows...)
-		} else {
-			sheets[sheetName] = rows
-		}
-	}
-	return sheets
+	return f.GetSheetMap()[1]
 }
 
 func getSheet(f string, sheetName string) [][]string {
