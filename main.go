@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/360EntSecGroup-Skylar/excelize"
@@ -26,6 +27,7 @@ const (
 	colPeriod     = 4
 	colTitle      = 5
 	colDetail     = 6
+	colManual     = 12
 	colStartStaff = 20
 
 	// Excel から取得したタスクのインデックス
@@ -35,10 +37,17 @@ const (
 	iDetail = 3
 
 	// Outlook タスクの CSV インデックス
-	iTaskTitle    = 0
-	iTaskStartDay = 1
-	iTaskEndtDay  = 2
-	iTaskDetail   = 12
+	iTaskTitle         = 0
+	iTaskStartDay      = 1
+	iTaskEndtDay       = 2
+	iTaskAlarm         = 3
+	iTaskProgress      = 7
+	iTaskEstimatedTime = 8
+	iTaskActualTime    = 9
+	iTaskPrivate       = 11
+	iTaskDetail        = 12
+	iTaskSecret        = 17
+	iTaskPriority      = 20
 
 	// Outlook スケジュールの CSV インデックス
 	iScheduleStartDay  = 3
@@ -176,6 +185,9 @@ func getExcelfile() string {
 			logg(err)
 			return ""
 		}
+		if len(files) < 1 {
+			return ""
+		}
 		filename = files[0]
 	}
 	info, err := os.Stat(filename)
@@ -256,6 +268,7 @@ func getPicks(task []string) ([]time.Time, string) {
 			month, err := strconv.Atoi(period[0])
 			if err != nil {
 				logg(err)
+				continue
 			}
 			picks = append(picks, time.Date(startDay.Year(), time.Month(month), 1, 0, 0, 0, 0, time.Local))
 		}
@@ -267,6 +280,7 @@ func getPicks(task []string) ([]time.Time, string) {
 			day, err := strconv.Atoi(period[0])
 			if err != nil {
 				logg(err)
+				continue
 			}
 			picks = append(picks, time.Date(startDay.Year(), startDay.Month(), day, 0, 0, 0, 0, time.Local))
 		}
@@ -319,6 +333,10 @@ func convertSchedule(tasks [][]string) [][]string {
 			continue
 		}
 		for _, pick := range picks {
+			// 開始日以降の日付になるように繰り返し
+			for pick.Unix() < startDay.Unix() {
+				pick = getNextPick(pick, cycle)
+			}
 			for pick.Unix() <= endDay.Unix() {
 				list := make([]string, 20, 20)
 				list[iScheduleStartDay] = pick.Format("2006-01-02")
@@ -345,12 +363,23 @@ func convertTask(tasks [][]string) [][]string {
 			continue
 		}
 		for _, pick := range picks {
+			// 開始日以降の日付になるように繰り返し
+			for pick.Unix() < startDay.Unix() {
+				pick = getNextPick(pick, cycle)
+			}
 			for pick.Unix() <= endDay.Unix() {
 				list := make([]string, 22, 22)
 				list[iTaskTitle] = task[iTitle]
 				list[iTaskStartDay] = pick.Format("2006-01-02")
 				list[iTaskEndtDay] = pick.Format("2006-01-02")
+				list[iTaskAlarm] = "FALSE"
+				list[iTaskProgress] = "0"
+				list[iTaskEstimatedTime] = "0"
+				list[iTaskActualTime] = "0"
+				list[iTaskPrivate] = "FALSE"
 				list[iTaskDetail] = task[iDetail]
+				list[iTaskSecret] = "標準"
+				list[iTaskPriority] = "標準"
 				lists = append(lists, list)
 				pick = getNextPick(pick, cycle)
 			}
@@ -381,13 +410,25 @@ func getPlainTasks(s [][]string, indexStaff int) [][]string {
 			continue
 		}
 		// fmt.Println(cols[colStaff])
-		if cells[colStaff] != "〇" {
+		if cells[colStaff] == "" {
 			continue
 		}
-		task = []string{cells[colCycle], cells[colPeriod], cells[colTitle], cells[colDetail]}
+		task = []string{cells[colCycle], cells[colPeriod], cells[colTitle], concatDetail(cells[colDetail], cells[colManual])}
 		tasks = append(tasks, task)
 	}
 	return tasks
+}
+
+func concatDetail(s1 string, s2 string) string {
+	s1 = strings.TrimSpace(s1)
+	s2 = strings.TrimSpace(s2)
+	if s1 == "" {
+		return s2
+	}
+	if s2 == "" {
+		return s1
+	}
+	return s1 + "\n\n" + s2
 }
 
 // 担当者の配列を取得
