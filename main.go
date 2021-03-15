@@ -163,7 +163,12 @@ func (mw *MyMainWindow) writeCsv() {
 		return
 	}
 
-	writeCsv(convertOutlookFormat(getPlainTasks(mw.sheet, staff), formatType))
+	errmsg := writeCsv(convertOutlookFormat(getPlainTasks(mw.sheet, staff), formatType))
+	if errmsg != "" {
+		walk.MsgBox(mw, "message", "CSV 出力失敗。", walk.MsgBoxOK|walk.MsgBoxIconInformation)
+		return
+	}
+
 	walk.MsgBox(mw, "message", "出力完了", walk.MsgBoxOK|walk.MsgBoxIconInformation)
 }
 
@@ -305,11 +310,11 @@ func getPicks(task []string) ([]time.Time, string) {
 	return picks, cycle
 }
 
-func writeCsv(records [][]string) {
+func writeCsv(records [][]string) string {
 	f, err := os.Create("import.csv")
 	if err != nil {
 		logg(err)
-		return
+		return err.Error()
 	}
 	defer f.Close()
 
@@ -320,7 +325,9 @@ func writeCsv(records [][]string) {
 
 	if err := w.Error(); err != nil {
 		logg(err)
+		return err.Error()
 	}
+	return ""
 }
 
 func convertSchedule(tasks [][]string) [][]string {
