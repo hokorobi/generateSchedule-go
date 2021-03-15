@@ -130,12 +130,12 @@ type MyMainWindow struct {
 }
 
 func main() {
-	sheet := getSheet()
-	if sheet == nil {
+	sheet, errmsg := getSheet()
+	if errmsg != "" {
+		walk.MsgBox(nil, "message", errmsg, walk.MsgBoxOK|walk.MsgBoxIconError)
 		return
 	}
 
-	// TODO: ログファイル出力
 	MW := getMainWindow(sheet)
 	MW.Run()
 }
@@ -457,25 +457,23 @@ func getSheetName(filename string) string {
 	return f.GetSheetMap()[1]
 }
 
-func getSheet() [][]string {
+func getSheet() ([][]string, string) {
 	filename = getExcelfile()
 	if filename == "" {
-		logg("Excel ファイルは見つかりませんでした。")
-		return nil
+		return nil, "Excel ファイルは見つかりませんでした。"
 	}
 
 	sheetname = getSheetName(filename)
 	if sheetname == "" {
-		logg(filename + " からシート名が取得できませんでした。")
-		return nil
+		return nil, filename + " からシート名が取得できませんでした。"
 	}
 
 	f, err := excelize.OpenFile(filename)
 	if err != nil {
 		logg(err)
-		return nil
+		return nil, ""
 	}
-	return f.GetRows(sheetname)
+	return f.GetRows(sheetname), ""
 }
 
 // https://qiita.com/KemoKemo/items/d135ddc93e6f87008521#comment-7d090bd8afe54df429b9
